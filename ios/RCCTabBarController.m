@@ -1,3 +1,4 @@
+//gerb
 #import "RCCTabBarController.h"
 #import "RCCViewController.h"
 #import <React/RCTConvert.h>
@@ -26,32 +27,32 @@
     dispatch_async(queue, ^{
         [[[RCCManager sharedInstance].getBridge uiManager] configureNextLayoutAnimation:nil withCallback:^(NSArray* arr){} errorCallback:^(NSArray* arr){}];
     });
-    
+
     if (tabBarController.selectedIndex != [tabBarController.viewControllers indexOfObject:viewController]) {
         NSDictionary *body = @{
                                @"selectedTabIndex": @([tabBarController.viewControllers indexOfObject:viewController]),
                                @"unselectedTabIndex": @(tabBarController.selectedIndex)
                                };
         [RCCTabBarController sendScreenTabChangedEvent:viewController body:body];
-        
+
         [[[RCCManager sharedInstance] getBridge].eventDispatcher sendAppEventWithName:@"bottomTabSelected" body:body];
         if ([viewController isKindOfClass:[UINavigationController class]]) {
             UINavigationController *navigationController = (UINavigationController*)viewController;
             UIViewController *topViewController = navigationController.topViewController;
-            
+
             if ([topViewController isKindOfClass:[RCCViewController class]]) {
                 RCCViewController *topRCCViewController = (RCCViewController*)topViewController;
                 topRCCViewController.commandType = COMMAND_TYPE_BOTTOME_TAB_SELECTED;
                 topRCCViewController.timestamp = [RCTHelpers getTimestampString];
             }
         }
-        
+
     } else {
         [RCCTabBarController sendScreenTabPressedEvent:viewController body:nil];
     }
-    
-    
-    
+
+
+
     return YES;
 }
 
@@ -73,11 +74,11 @@
 - (instancetype)initWithProps:(NSDictionary *)props children:(NSArray *)children globalProps:(NSDictionary*)globalProps bridge:(RCTBridge *)bridge {
     self = [super init];
     if (!self) return nil;
-    
+
     self.delegate = self;
-    
+
     self.tabBar.translucent = YES; // default
-    
+
     UIColor *buttonColor = nil;
     UIColor *selectedButtonColor = nil;
     UIColor *labelColor = nil;
@@ -113,26 +114,26 @@
             UIColor *color = tabBarBackgroundColor != (id)[NSNull null] ? [RCTConvert UIColor:tabBarBackgroundColor] : nil;
             self.tabBar.barTintColor = color;
         }
-        
+
         NSString *tabBarTranslucent = tabsStyle[@"tabBarTranslucent"];
         if (tabBarTranslucent) {
             self.tabBar.translucent = [tabBarTranslucent boolValue] ? YES : NO;
         }
-        
+
         NSString *tabBarHideShadow = tabsStyle[@"tabBarHideShadow"];
         if (tabBarHideShadow) {
             self.tabBar.clipsToBounds = [tabBarHideShadow boolValue] ? YES : NO;
         }
     }
-    
+
     NSMutableArray *viewControllers = [NSMutableArray array];
-    
+
     // go over all the tab bar items
     for (NSDictionary *tabItemLayout in children) {
         // make sure the layout is valid
         if (![tabItemLayout[@"type"] isEqualToString:@"TabBarControllerIOS.Item"]) continue;
         if (!tabItemLayout[@"props"]) continue;
-        
+
         // get the view controller inside
         if (!tabItemLayout[@"children"]) continue;
         if (![tabItemLayout[@"children"] isKindOfClass:[NSArray class]]) continue;
@@ -140,55 +141,52 @@
         NSDictionary *childLayout = tabItemLayout[@"children"][0];
         UIViewController *viewController = [RCCViewController controllerWithLayout:childLayout globalProps:globalProps bridge:bridge];
         if (!viewController) continue;
-        
+
         // create the tab icon and title
         NSString *title = tabItemLayout[@"props"][@"title"];
         UIImage *iconImage = nil;
         id icon = tabItemLayout[@"props"][@"icon"];
         if (icon) {
-            iconImage = [RCTConvert UIImage:icon];
-            if (buttonColor) {
-                iconImage = [[self image:iconImage withColor:buttonColor] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
-            }
+            iconImage = [[RCTConvert UIImage:icon] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
         }
         UIImage *iconImageSelected = nil;
         id selectedIcon = tabItemLayout[@"props"][@"selectedIcon"];
         if (selectedIcon) {
-            iconImageSelected = [RCTConvert UIImage:selectedIcon];
+            iconImageSelected = [[RCTConvert UIImage:selectedIcon] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];;
         } else {
-            iconImageSelected = [RCTConvert UIImage:icon];
+            iconImageSelected = [[RCTConvert UIImage:icon] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];;
         }
-        
+
         viewController.tabBarItem = [[UITabBarItem alloc] initWithTitle:title image:iconImage tag:0];
         viewController.tabBarItem.accessibilityIdentifier = tabItemLayout[@"props"][@"testID"];
         viewController.tabBarItem.selectedImage = iconImageSelected;
-        
+
         id imageInsets = tabItemLayout[@"props"][@"iconInsets"];
         if (imageInsets && imageInsets != (id)[NSNull null]) {
             id topInset = imageInsets[@"top"];
             id leftInset = imageInsets[@"left"];
             id bottomInset = imageInsets[@"bottom"];
             id rightInset = imageInsets[@"right"];
-            
+
             CGFloat top = topInset != (id)[NSNull null] ? [RCTConvert CGFloat:topInset] : 0;
             CGFloat left = topInset != (id)[NSNull null] ? [RCTConvert CGFloat:leftInset] : 0;
             CGFloat bottom = topInset != (id)[NSNull null] ? [RCTConvert CGFloat:bottomInset] : 0;
             CGFloat right = topInset != (id)[NSNull null] ? [RCTConvert CGFloat:rightInset] : 0;
-            
+
             viewController.tabBarItem.imageInsets = UIEdgeInsetsMake(top, left, bottom, right);
         }
         NSMutableDictionary *unselectedAttributes = [RCTHelpers textAttributesFromDictionary:tabsStyle withPrefix:@"tabBarText" baseFont:[UIFont systemFontOfSize:10]];
         if (!unselectedAttributes[NSForegroundColorAttributeName] && labelColor) {
             unselectedAttributes[NSForegroundColorAttributeName] = labelColor;
         }
-        
+
         [viewController.tabBarItem setTitleTextAttributes:unselectedAttributes forState:UIControlStateNormal];
-        
+
         NSMutableDictionary *selectedAttributes = [RCTHelpers textAttributesFromDictionary:tabsStyle withPrefix:@"tabBarSelectedText" baseFont:[UIFont systemFontOfSize:10]];
         if (!selectedAttributes[NSForegroundColorAttributeName] && selectedLabelColor) {
             selectedAttributes[NSForegroundColorAttributeName] = selectedLabelColor;
         }
-        
+
         [viewController.tabBarItem setTitleTextAttributes:selectedAttributes forState:UIControlStateSelected];
         // create badge
         NSObject *badge = tabItemLayout[@"props"][@"badge"];
@@ -197,21 +195,21 @@
         } else {
             viewController.tabBarItem.badgeValue = [NSString stringWithFormat:@"%@", badge];
         }
-        
+
         [viewControllers addObject:viewController];
     }
-    
+
     // replace the tabs
     self.viewControllers = viewControllers;
-    
+
     NSNumber *initialTab = tabsStyle[@"initialTabIndex"];
     if (initialTab) {
         NSInteger initialTabIndex = initialTab.integerValue;
         [self setSelectedIndex:initialTabIndex];
     }
-    
+
     [self setRotation:props];
-    
+
     return self;
 }
 
@@ -221,7 +219,7 @@
         NSNumber *tabIndex = actionParams[@"tabIndex"];
         if (tabIndex) {
             int i = (int)[tabIndex integerValue];
-            
+
             if ([self.viewControllers count] > i) {
                 viewController = [self.viewControllers objectAtIndex:i];
             }
@@ -231,10 +229,10 @@
         if (contentId && contentType) {
             viewController = [[RCCManager sharedInstance] getControllerWithId:contentId componentType:contentType];
         }
-        
+
         if (viewController) {
             NSObject *badge = actionParams[@"badge"];
-            
+
             if (badge == nil || [badge isEqual:[NSNull null]]) {
                 viewController.tabBarItem.badgeValue = nil;
             }
@@ -242,7 +240,7 @@
             {
                 NSString *badgeColor = actionParams[@"badgeColor"];
                 UIColor *color = badgeColor != (id)[NSNull null] ? [RCTConvert UIColor:badgeColor] : nil;
-                
+
                 if ([viewController.tabBarItem respondsToSelector:@selector(badgeColor)]) {
                     viewController.tabBarItem.badgeColor = color;
                 }
@@ -250,13 +248,13 @@
             }
         }
     }
-    
+
     if ([performAction isEqualToString:@"switchTo"]) {
         UIViewController *viewController = nil;
         NSNumber *tabIndex = actionParams[@"tabIndex"];
         if (tabIndex) {
             int i = (int)[tabIndex integerValue];
-            
+
             if ([self.viewControllers count] > i) {
                 viewController = [self.viewControllers objectAtIndex:i];
             }
@@ -266,18 +264,18 @@
         if (contentId && contentType) {
             viewController = [[RCCManager sharedInstance] getControllerWithId:contentId componentType:contentType];
         }
-        
+
         if (viewController) {
             [self setSelectedViewController:viewController];
         }
     }
-    
+
     if ([performAction isEqualToString:@"setTabButton"]) {
         UIViewController *viewController = nil;
         NSNumber *tabIndex = actionParams[@"tabIndex"];
         if (tabIndex) {
             int i = (int)[tabIndex integerValue];
-            
+
             if ([self.viewControllers count] > i) {
                 viewController = [self.viewControllers objectAtIndex:i];
             }
@@ -287,20 +285,19 @@
         if (contentId && contentType) {
             viewController = [[RCCManager sharedInstance] getControllerWithId:contentId componentType:contentType];
         }
-        
+
         if (viewController) {
             UIImage *iconImage = nil;
             id icon = actionParams[@"icon"];
             if (icon && icon != (id)[NSNull null]) {
-                iconImage = [RCTConvert UIImage:icon];
-                iconImage = [[self image:iconImage withColor:self.tabBar.tintColor] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
+                iconImage = [[RCTConvert UIImage:icon] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
                 viewController.tabBarItem.image = iconImage;
             }
-            
+
             UIImage *iconImageSelected = nil;
             id selectedIcon = actionParams[@"selectedIcon"];
             if (selectedIcon && selectedIcon != (id)[NSNull null]) {
-                iconImageSelected = [RCTConvert UIImage:selectedIcon];
+                iconImageSelected = [[RCTConvert UIImage:selectedIcon] imageWithRenderingMode:UIImageRenderingModeAlwaysOriginal];
                 viewController.tabBarItem.selectedImage = iconImageSelected;
             }
             
